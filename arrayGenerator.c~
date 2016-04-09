@@ -14,7 +14,7 @@ void generator(int size){
 		int r = rand() % 4294967296;
 		fprintf(fp, "%d ", r);
 	}
-	fprintf(fp, "\n \n");
+	fprintf(fp, "\n \n", r);
 	fclose(fp);
 }
 

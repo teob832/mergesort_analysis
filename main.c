@@ -17,7 +17,7 @@
 
 #define MAX_THREADS 8	// The maximum number of threads spawned
 #define MIN_SIZE 4	// The smallest subproblem which we will multithread
-#define SHMKEY ((key_t) 2142)   // Shared Mem Key
+#define SHMKEY ((key_t) 9999)   // Shared Mem Key
 
 sem_t mutex;
 
@@ -44,6 +44,8 @@ void* mergeSort(void* arg_in)
 	pthread_t 		tid[0];           	//Ids for threads
 	pthread_attr_t	attr;           	//Attribute
 	struct Arg* arg_left;
+
+	arg_left = (struct Arg*) malloc(sizeof(struct Arg));
 	arg_left->n = ((struct Arg*)arg_in)->n/2;
 
 
@@ -111,6 +113,7 @@ int main()
 	FILE* fp;
 	
 	struct Arg* input_struct;
+	input_struct = (struct Arg*) malloc(sizeof(struct Arg));
 	
 	/* Create and connect to a shared memory segment*/
 	if ((shmid = shmget(SHMKEY, sizeof(shared_mem), IPC_CREAT | 0666)) < 0)
