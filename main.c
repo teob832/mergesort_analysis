@@ -4,10 +4,16 @@
  * Date: April 9, 2016
  *********************************************************************/
 
+<<<<<<< HEAD
+#include <pthread.h>
+#include <stdio.h>
 #include <sys/types.h>
 #include <sys/ipc.h>
 #include <sys/shm.h>
-#include <sys/sem.h>
+#include <sys/wait.h>
+#include <fcntl.h>
+#include <stdlib.h>
+#include <unistd.h>
 #include <semaphore.h>
 
 #define MAX_THREADS 8	// The maximum number of threads spawned
@@ -16,6 +22,16 @@
 
 sem_t mutex;
 
+// Struct Used to pass the argument
+struct Arg
+{
+    int n;      //Size of the array
+    int* array;
+	int mid
+	
+};
+
+// Struct used for shared memory
 typedef struct
 {
 	int thread_count;
@@ -34,43 +50,43 @@ mergeSortDriver(void* arg)
 	int mid = arg.n / 2;
 
 
-	//Recursive call to left
-	mergeSort(arg.array,     )
-
-
-	//Recursive call to right
-
-
-	//Combine subsolutions
-
-
-
-	//Check if leftovers exist LEFT
-
-
-
-	//Check if leftovers exist RIGHT
-
-
-
-
-	mergeSort(arg, )
-}
-
-
-
-startProgram(int n, int* arr)
+//MergeSort 
+void* mergeSort(void* arg)
 {
-	//Logic for size checking
-	//
-	//
+    pthread_t 		tid[0];           	//Ids for threads
+    pthread_attr_t	attr;           	//Attribute
+	struct Arg arg;
+
+	arg.n = n;
+	arg.array = array;
+
+    // Set Up
+    //*************************************************************
+    //pthread_mutex_init(&mutex, NULL);    //Initialize mutex
+    
+    pthread_attr_init(&attr);
+    pthread_attr_setscope(&attr, PTHREAD_SCOPE_SYSTEM);  
 
 
 
-	//create 2 threads
+    //Logic for size checking
+    //*************************************************************
 
-	pthread_create(tid[0], ARR, mergeSortDriver, arg);
-	pthread_create(tid[1], ARR, mergeSortDriver, arg);
+
+
+    // Create the Threads 
+    //*************************************************************
+    pthread_create(&tid[0], &attr, mergeSort, arg);
+    //pthread_create(&tid[0], &attr, mergeSort, arg);
+
+
+
+
+
+
+    // Wait for thread to finish 
+    //*************************************************************
+    pthread_join(tid[0], NULL);
 }
 
 // Increases the shared thread count by 1
@@ -95,6 +111,11 @@ bool createThread(int array_size)
 
 int main()
 {
+	int n;
+	int* arr;
+	int i;
+	FILE* fp;
+	
 	/* Create and connect to a shared memory segment*/
 	if ((shmid = shmget(SHMKEY, sizeof(shared_mem), IPC_CREAT | 0666)) < 0)
 	{
@@ -113,9 +134,33 @@ int main()
 	
 	// Create Semaphore to protect thread_count
 	sem_init(&mutex, 0, 1);
+		
+
+	//Call array generator
+
+
+	//Read the file
+	//*************************************************************
+	fp = fopen("input.txt", "r");
+	fscanf(fp, "%d", &n);
+	arr = (int*) malloc(sizeof(int) * n);
+
+
+	for (i = 0; i < n; ++i)
+		fscanf(fp, "%d", &arr[i]);
+
+
+
+	// Sort
+	//*************************************************************
+	mergeSort(n, &arr);
+
 	
-	// De-Allocate Semaphore
-	sem_destroy(&mutex);	
+	//Clean Up
+	//*************************************************************
+	fclose(fp);				// Close file
+	free(arr);
+	sem_destroy(&mutex);			// De-Allocate Semaphore
 	
 	// De-Allocate Shared Memory
 	if ((shmctl(shmid, IPC_RMID, (struct shmid_ds *) 0)) == -1)
@@ -123,5 +168,6 @@ int main()
 		perror("shmctl");
 		exit(-1);
 	}    
-	startProgram(n, arr);
+	
+	return 0;
 }
