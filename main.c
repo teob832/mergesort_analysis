@@ -26,7 +26,7 @@ struct Arg
 {
     int n;      //Size of the array
     int* array;
-	int mid
+	int mid;
 	
 };
 
@@ -34,30 +34,18 @@ struct Arg
 typedef struct
 {
 	int thread_count;
-	int turn;
-	int flag[2];
 } shared_mem;
 shared_mem *shared;
 
-mergeSortDriver(void* arg)
-{
-	//If single element
-	if (arg.n == 1)
-	return;
-
-	//Find midpoint
-	int mid = arg.n / 2;
-
 
 //MergeSort 
-void* mergeSort(void* arg)
+void* mergeSort(void* arg_in)
 {
-    pthread_t 		tid[0];           	//Ids for threads
-    pthread_attr_t	attr;           	//Attribute
-	struct Arg arg;
+	pthread_t 		tid[0];           	//Ids for threads
+	pthread_attr_t	attr;           	//Attribute
+	struct Arg* arg_left;
+	arg_left->n = ((struct Arg*)arg_in)->n/2;
 
-	arg.n = n;
-	arg.array = array;
 
     // Set Up
     //*************************************************************
@@ -75,7 +63,7 @@ void* mergeSort(void* arg)
 
     // Create the Threads 
     //*************************************************************
-    pthread_create(&tid[0], &attr, mergeSort, arg);
+    pthread_create(&tid[0], &attr, mergeSort, (void*)arg_left);
     //pthread_create(&tid[0], &attr, mergeSort, arg);
 
 
@@ -93,28 +81,36 @@ void* mergeSort(void* arg)
 void incrementThreadCount()
 {
 	sem_wait(&mutex);
-	++shared->thread_count;
+	++(shared->thread_count);
 	sem_post(&mutex);
 }
 
 // Returns true if a new thread should be created
 // based on MAX_THREADS and MIN_SIZE
-bool createThread(int array_size)
+int shouldCreateThread(int array_size)
 {
 	sem_wait(&mutex);
 	int num_threads = shared->thread_count;
 	sem_post(&mutex);
 	
-	return num_threads < MAX_THREADS
-	&& array_size >= MIN_SIZE;	
+	if(num_threads < MAX_THREADS
+	&& array_size >= MIN_SIZE)	
+		return 1;
+	return 0;
 }
 
 int main()
 {
+	int shmid;
+	char *shmadd;
+	shmadd = (char *)0;
+	
 	int n;
 	int* arr;
 	int i;
 	FILE* fp;
+	
+	struct Arg* input_struct;
 	
 	/* Create and connect to a shared memory segment*/
 	if ((shmid = shmget(SHMKEY, sizeof(shared_mem), IPC_CREAT | 0666)) < 0)
@@ -123,7 +119,7 @@ int main()
 		exit(1);
 	}
 
-	if ((total = (shared_mem*)shmat(shmid, shmadd, 0)) == (shared_mem *)-1)
+	if ((shared = (shared_mem*)shmat(shmid, shmadd, 0)) == (shared_mem *)-1)
 	{
 		perror("shmat");
 		exit(0);
@@ -149,12 +145,19 @@ int main()
 	for (i = 0; i < n; ++i)
 		fscanf(fp, "%d", &arr[i]);
 
-
+	input_struct->n = n;
+	input_struct->array = arr;
 
 	// Sort
 	//*************************************************************
-	mergeSort(n, &arr);
-
+	pthread_t 		tid[0];           	//Ids for threads
+	pthread_attr_t	attr;           	//Attribute
+	
+	// Set Up
+	//*************************************************************
+	pthread_attr_init(&attr);
+	pthread_attr_setscope(&attr, PTHREAD_SCOPE_SYSTEM);  	
+	pthread_create(&tid[0], &attr, mergeSort, (void*)input_struct);
 	
 	//Clean Up
 	//*************************************************************
