@@ -24,9 +24,9 @@ sem_t mutex;
 // Struct Used to pass the argument
 struct Arg
 {
-    long n;
-    long* array;
-    long* temp;
+    unsigned long n;
+    unsigned long* array;
+    unsigned long* temp;
 };
 
 // Struct used for shared memory
@@ -47,7 +47,7 @@ void incrementThreadCount()
 
 // Returns true if a new thread should be created
 // based on MAX_THREADS and MIN_SIZE
-int shouldCreateThread(long array_size)
+int shouldCreateThread(unsigned long array_size)
 {
     sem_wait(&mutex);
     int num_threads = shared->thread_count;
@@ -62,15 +62,15 @@ int shouldCreateThread(long array_size)
 //MergeSort 
 void* mergeSort(void* arg_in)
 {
-    long size = ((struct Arg*)arg_in)->n;
+    unsigned long size = ((struct Arg*)arg_in)->n;
 
     // Base Case
     if (size <= 1) return 0;
 
     // Set Left and Right arguments
     //*************************************************************
-    long l = 0, r = 0, s = 0, i = 0, j = 0;
-    long mid = (size + 1) / 2;
+    unsigned long l = 0, r = 0, s = 0, i = 0, j = 0;
+    unsigned long mid = (size + 1) / 2;
 
 	struct Arg* arg_left = (struct Arg*) malloc(sizeof(struct Arg));
 	struct Arg* arg_right = (struct Arg*) malloc(sizeof(struct Arg));	
@@ -148,39 +148,39 @@ void* mergeSort(void* arg_in)
     return 0;
 }
 
-long* sortedArray(long n)
+unsigned long* sortedArray(unsigned long n)
 {
-    long* arr = (long*) malloc(sizeof(long) * n);
-    long i;
+    unsigned long* arr = (unsigned long*) malloc(sizeof(unsigned long) * n);
+    unsigned long i;
     for (i = 0; i < n; i++)
         arr[i] = i + 1;
     return arr;
 }
 
-void Swap(long* a, long* b)
+void Swap(unsigned long* a, unsigned long* b)
 {
-    long t = *a;
+    unsigned long t = *a;
     *a = *b;
     *b = t;
 }
 
-void genFile(long size)
+void genFile(unsigned long size)
 {
     FILE* fp = fopen("input.txt","w");
-    fprintf(fp, "%d\n", size);
+    fprintf(fp, "%lu\n", size);
 
-    long* arr = sortedArray(size);
+    unsigned long* arr = sortedArray(size);
 
-    long i;
+    unsigned long i;
     for (i = size; i > 1; i--)
     {
-        long swap = rand() % i;
+        unsigned long swap = rand() % i;
         Swap(&arr[swap], &arr[i - 1]);
 
     }
 
     for (i = 0; i < size; i++)
-        fprintf(fp, "%d ", arr[i]);
+        fprintf(fp, "%lud ", arr[i]);
 
     fprintf(fp, "\n \n");
     fclose(fp);
@@ -215,12 +215,12 @@ int main()
 
     FILE* fp;
 	fp = fopen("input.txt", "r");
-    long n;
-    fscanf(fp, "%d", &n);
+    unsigned long n;
+    fscanf(fp, "%lu", &n);
 
     struct Arg* input_struct = (struct Arg*) malloc(sizeof(struct Arg));
-    input_struct->array = (long*) malloc(sizeof(long) * n);
-    input_struct->temp = (long*) malloc(sizeof(long)* n);
+    input_struct->array = (unsigned long*) malloc(sizeof(unsigned long) * n);
+    input_struct->temp = (unsigned long*) malloc(sizeof(unsigned long)* n);
 	input_struct->n = n;
 
 	// Sort
@@ -230,7 +230,7 @@ int main()
     // Check Result
     //*************************************************************
     int sorted = 1;
-    long i;
+    unsigned long i;
     for (i = 0; i < n - 1; i++)
     {
         if (input_struct->array[i + 1]
