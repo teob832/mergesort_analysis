@@ -26,7 +26,7 @@ struct Arg
 {
     int n;      //Size of the array
     int* array;
-	int mid;
+    int* temp;
 	
 };
 
@@ -38,47 +38,6 @@ typedef struct
 shared_mem *shared;
 
 
-//MergeSort 
-void* mergeSort(void* arg_in)
-{
-	pthread_t 		tid[0];           	//Ids for threads
-	pthread_attr_t	attr;           	//Attribute
-	struct Arg* arg_left;
-
-	arg_left = (struct Arg*) malloc(sizeof(struct Arg));
-	arg_left->n = ((struct Arg*)arg_in)->n/2;
-
-
-    // Set Up
-    //*************************************************************
-    //pthread_mutex_init(&mutex, NULL);    //Initialize mutex
-    
-    pthread_attr_init(&attr);
-    pthread_attr_setscope(&attr, PTHREAD_SCOPE_SYSTEM);  
-
-
-
-    //Logic for size checking
-    //*************************************************************
-
-
-
-    // Create the Threads 
-    //*************************************************************
-    pthread_create(&tid[0], &attr, mergeSort, (void*)arg_left);
-    //pthread_create(&tid[0], &attr, mergeSort, arg);
-
-
-
-
-
-
-    // Wait for thread to finish 
-    //*************************************************************
-    pthread_join(tid[0], NULL);
-
-}
-
 // Increases the shared thread count by 1
 void incrementThreadCount()
 {
@@ -86,6 +45,91 @@ void incrementThreadCount()
 	++(shared->thread_count);
 	sem_post(&mutex);
 }
+
+//MergeSort 
+void* mergeSort(void* arg_in)
+{
+	if (((struct Arg*)arg_in)->n == 1) return;		
+	incrementThreadCount();
+	pthread_t 		tid[2];           	//Ids for threads
+	pthread_attr_t	attr;           	//Attribute
+	struct Arg* arg_left;
+	struct Arg* arg_right;
+	
+	arg_left = (struct Arg*) malloc(sizeof(struct Arg));
+	arg_right = (struct Arg*) malloc(sizeof(struct Arg));
+	int mid = ((((struct Arg*)arg_in)->n)+1)/2;
+ 
+	arg_left->n = mid;
+	arg_right->n = mid;
+	arg_left->array = ((struct Arg*)arg_in)->array;
+	arg_right->array = (&((struct Arg*)arg_in)->array[mid]);
+
+	
+	
+
+
+    // Set Up
+    //*************************************************************
+    //pthread_mutex_init(&mutex, NULL);    //Initialize mutex
+    
+    	pthread_attr_init(&attr);
+    	pthread_attr_setscope(&attr, PTHREAD_SCOPE_SYSTEM);  
+
+
+
+    // Create the Threads 
+    //*************************************************************
+	if(shouldCreateThread(arg_left-> n)) 
+		pthread_create(&tid[0], &attr, mergeSort, (void*)arg_left);
+	else
+		mergeSort((void*)arg_left);
+	
+	if(shouldCreateThread(arg_right-> n)) 
+		pthread_create(&tid[1], &attr, mergeSort, (void*)arg_right);
+	else	
+		mergeSort((void*)arg_right);
+
+
+	int l = 0;
+	int r = 0;
+	int s = 0;
+	int i = 0;
+	int j = 0;
+	 while(l<mid && r<((((struct Arg*)arg_in)->n)-mid)){			
+            if(arg_left->array[l] < arg_right->array[r]){			
+                ((struct Arg*)arg_in)->temp[s] = arg_left->array[l];			
+                l++;					
+            }
+            else{
+                ((struct Arg*)arg_in)->temp[s] = arg_right->array[r];
+                r++;
+            }
+            s++;					
+        }
+	for (i = l, j = s; i <= (mid-1), j <= (s+mid-l-1); i++, j++){	
+            ((struct Arg*)arg_in)->temp[j] = arg_left->array[i];
+        }
+        s += (mid - l);
+        for (i = r, j = s; i <= ((((struct Arg*)arg_in)->n)-mid-1), j <= (s+(((struct Arg*)arg_in)->n)-mid-1-r); i++, j++){
+            ((struct Arg*)arg_in)->temp[j] = arg_right->array[i];
+        }
+        for (i = 0; i <= (((struct Arg*)arg_in)->n)-1; i++){
+            ((struct Arg*)arg_in)->array[i] = ((struct Arg*)arg_in)->temp[i];							
+        }
+
+
+
+
+
+    // Wait for thread to finish 
+    //*************************************************************
+	if(shouldCreateThread(arg_left-> n)) pthread_join(tid[0], NULL);
+	if(shouldCreateThread(arg_right-> n)) pthread_join(tid[1], NULL);
+}
+
+
+
 
 // Returns true if a new thread should be created
 // based on MAX_THREADS and MIN_SIZE
