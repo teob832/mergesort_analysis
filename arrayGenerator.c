@@ -19,6 +19,6 @@ void generator(int size){
 }
 
 int main(){
-	generator(50);
+	generator(500);
 	return;
 }

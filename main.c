@@ -21,6 +21,8 @@
 
 sem_t mutex;
 
+int n;
+
 // Struct Used to pass the argument
 struct Arg
 {
@@ -49,26 +51,32 @@ void incrementThreadCount()
 //MergeSort 
 void* mergeSort(void* arg_in)
 {
-	if (((struct Arg*)arg_in)->n <= 1) return;		
+	int fc = 0;
+
+	
+	
+	int l = 0, r = 0, s = 0, i = 0, j = 0;
+	int size = ((struct Arg*)arg_in)->n;
+
+	if (size <= 1) return;	
+
+	int mid = (size + 1) / 2;
 	incrementThreadCount();
 	pthread_t 		tid[2];           	//Ids for threads
 	pthread_attr_t	attr;           	//Attribute
-	struct Arg* arg_left;
-	struct Arg* arg_right;
 	
-	arg_left = (struct Arg*) malloc(sizeof(struct Arg));
-	arg_right = (struct Arg*) malloc(sizeof(struct Arg));
-	int mid = ((((struct Arg*)arg_in)->n-1))/2;
+	struct Arg* arg_left = (struct Arg*) malloc(sizeof(struct Arg));
+	struct Arg* arg_right = (struct Arg*) malloc(sizeof(struct Arg));	
  
 	arg_left->n = mid;
-	arg_right->n = ((struct Arg*)arg_in)->n - mid;
+	arg_right->n = size - mid;
 	arg_left->array = ((struct Arg*)arg_in)->array;
-	arg_right->array = (&((struct Arg*)arg_in)->array[mid]);
+	arg_right->array = ((struct Arg*)arg_in)->array + mid;
+	arg_left->temp = ((struct Arg*)arg_in)->temp;
+	arg_right->temp = ((struct Arg*)arg_in)->temp + mid;
 
     // Set Up
     //*************************************************************
-    //pthread_mutex_init(&mutex, NULL);    //Initialize mutex
-    
     	pthread_attr_init(&attr);
     	pthread_attr_setscope(&attr, PTHREAD_SCOPE_SYSTEM);  
 
@@ -76,23 +84,24 @@ void* mergeSort(void* arg_in)
 
     // Create the Threads 
     //*************************************************************
-	//if(shouldCreateThread(arg_left-> n)) 
-//		pthread_create(&tid[0], &attr, mergeSort, (void*)arg_left);
-//	else
+	if(shouldCreateThread(arg_left-> n)) 
+		pthread_create(&tid[0], &attr, mergeSort, (void*)arg_left);
+	else
 		mergeSort((void*)arg_left);
 	
-//	if(shouldCreateThread(arg_right-> n)) 
-//		pthread_create(&tid[1], &attr, mergeSort, (void*)arg_right);
-//	else	
+	if(shouldCreateThread(arg_right-> n)) 
+		pthread_create(&tid[1], &attr, mergeSort, (void*)arg_right);
+	else	
 		mergeSort((void*)arg_right);
 
-	
-	int l = 0;
-	int r = 0;
-	int s = 0;
-	int i = 0;
-	int j = 0;
-	 while(l<mid && r<((((struct Arg*)arg_in)->n)-mid)){			
+	// Wait for threads to finish 
+    //*************************************************************
+	if(shouldCreateThread(arg_left->n)) 
+		pthread_join(tid[0], NULL);
+	if(shouldCreateThread(arg_right->n))
+		pthread_join(tid[1], NULL);
+
+	 while(l < mid && r < size-mid){			
             if(arg_left->array[l] < arg_right->array[r]){			
                 ((struct Arg*)arg_in)->temp[s] = arg_left->array[l];			
                 l++;					
@@ -103,25 +112,21 @@ void* mergeSort(void* arg_in)
             }
             s++;					
         }
-	for (i = l, j = s; i <= (mid-1), j <= (s+mid-l-1); i++, j++){	
-            ((struct Arg*)arg_in)->temp[j] = arg_left->array[i];
-        }
+	for (i = l, j = s; i <= mid-1, j <= s+mid-l-1; i++, j++)
+	    ((struct Arg*)arg_in)->temp[j] = arg_left->array[i];
+        
         s += (mid - l);
-        for (i = r, j = s; i <= ((((struct Arg*)arg_in)->n)-mid-1), j <= (s+(((struct Arg*)arg_in)->n)-mid-1-r); i++, j++){
+
+        for (i = r, j = s; i <= size - mid - 1, j <= s + size - mid - 1 - r; i++, j++)
             ((struct Arg*)arg_in)->temp[j] = arg_right->array[i];
-        }
-        for (i = 0; i <= (((struct Arg*)arg_in)->n)-1; i++){
+        
+        for (i = 0; i <= size - 1; i++)
             ((struct Arg*)arg_in)->array[i] = ((struct Arg*)arg_in)->temp[i];							
-        }
 
+	free(arg_left);
+	free(arg_right);
 
-
-
-
-    // Wait for thread to finish 
-    //*************************************************************
-//	if(shouldCreateThread(arg_left-> n)) pthread_join(tid[0], NULL);
-//	if(shouldCreateThread(arg_right-> n)) pthread_join(tid[1], NULL);
+    
 }
 
 
@@ -146,8 +151,9 @@ int main()
 	int shmid;
 	char *shmadd;
 	shmadd = (char *)0;
+
 	
-	int n;
+	int j = 9001;
 	int* arr;
 	int i;
 	FILE* fp;
@@ -186,28 +192,21 @@ int main()
 
 	input_struct->temp = (int*) malloc(sizeof(int)* n);
 
-	for (i = 0; i < n; ++i)
-	{
-		fscanf(fp, "%d", &arr[i]);
-		printf("Input: %d\n", arr[i]);
-	}
-
 	input_struct->n = n;
 	input_struct->array = arr;
 
 	// Sort
 	//*************************************************************
-	pthread_t 		tid[0];           	//Ids for threads
+	pthread_t tid[0];           	//Ids for threads
 	pthread_attr_t	attr;           	//Attribute
 	
 	
 	pthread_attr_init(&attr);
-	pthread_attr_setscope(&attr, PTHREAD_SCOPE_SYSTEM);  
-	printf("BEFORE%d", n);
+	pthread_attr_setscope(&attr, PTHREAD_SCOPE_SYSTEM);  	
  	
 	pthread_create(&tid[0], &attr, mergeSort, (void*)input_struct);
+	pthread_join(tid[0], NULL);
 	
-	printf("AFTER%d", n); 
 
 	for (i = 0; i < n; ++i)
 		printf("Output: %d\n", arr[i]);
@@ -219,6 +218,7 @@ int main()
 	fclose(fp);				// Close file
 	free(arr);
 	sem_destroy(&mutex);			// De-Allocate Semaphore
+	
 	
 	// De-Allocate Shared Memory
 	if ((shmctl(shmid, IPC_RMID, (struct shmid_ds *) 0)) == -1)
