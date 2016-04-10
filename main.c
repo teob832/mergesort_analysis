@@ -3,7 +3,6 @@
  * Authors: OY, MS, AI, NM
  * Date: April 9, 2016
  *********************************************************************/
-
 #include <pthread.h>
 #include <stdio.h>
 #include <sys/types.h>
@@ -15,7 +14,8 @@
 #include <unistd.h>
 #include <semaphore.h>
 
-#define MAX_THREADS 4	// The maximum number of threads spawned
+#define INPUT_SIZE 10000000  // The size of input to sort
+#define MAX_THREADS 2	// The maximum number of threads spawned
 #define MIN_SIZE 4	// The smallest subproblem which we will multithread
 #define SHMKEY ((key_t) 9999)   // Shared Mem Key
 
@@ -24,9 +24,9 @@ sem_t mutex;
 // Struct Used to pass the argument
 struct Arg
 {
-    int n;
-    int* array;
-    int* temp;
+    long n;
+    long* array;
+    long* temp;
 };
 
 // Struct used for shared memory
@@ -47,7 +47,7 @@ void incrementThreadCount()
 
 // Returns true if a new thread should be created
 // based on MAX_THREADS and MIN_SIZE
-int shouldCreateThread(int array_size)
+int shouldCreateThread(long array_size)
 {
     sem_wait(&mutex);
     int num_threads = shared->thread_count;
@@ -62,16 +62,16 @@ int shouldCreateThread(int array_size)
 //MergeSort 
 void* mergeSort(void* arg_in)
 {
-	int size = ((struct Arg*)arg_in)->n;
+    long size = ((struct Arg*)arg_in)->n;
+
+    // Base Case
     if (size <= 1) return 0;
 
-    int l = 0, r = 0, s = 0, i = 0, j = 0;
+    // Set Left and Right arguments
+    //*************************************************************
+    long l = 0, r = 0, s = 0, i = 0, j = 0;
+    long mid = (size + 1) / 2;
 
-	int mid = (size + 1) / 2;
-
-	pthread_t 		tid[2];           	//Ids for threads
-	pthread_attr_t	attr;           	//Attribute
-	
 	struct Arg* arg_left = (struct Arg*) malloc(sizeof(struct Arg));
 	struct Arg* arg_right = (struct Arg*) malloc(sizeof(struct Arg));	
  
@@ -82,8 +82,10 @@ void* mergeSort(void* arg_in)
 	arg_left->temp = ((struct Arg*)arg_in)->temp;
 	arg_right->temp = ((struct Arg*)arg_in)->temp + mid;
 
-    // Set Up
+    // Set Up Threads
     //*************************************************************
+    pthread_t tid[2];           	//Ids for threads
+    pthread_attr_t attr;           	//Attribute
     pthread_attr_init(&attr);
     pthread_attr_setscope(&attr, PTHREAD_SCOPE_SYSTEM);
 
@@ -91,34 +93,38 @@ void* mergeSort(void* arg_in)
     //*************************************************************
     if(shouldCreateThread(arg_left->n))
     {
-		pthread_create(&tid[0], &attr, mergeSort, (void*)arg_left);
+        pthread_create(&tid[0], &attr, mergeSort, arg_left);
         incrementThreadCount();
     }
 	else
-		mergeSort((void*)arg_left);
+        mergeSort(arg_left);
 	
     if(shouldCreateThread(arg_right->n))
     {
-		pthread_create(&tid[1], &attr, mergeSort, (void*)arg_right);
+        pthread_create(&tid[1], &attr, mergeSort, arg_right);
         incrementThreadCount();
     }
 	else	
-		mergeSort((void*)arg_right);
+        mergeSort(arg_right);
 
-	// Wait for threads to finish 
+    // Wait for threads to finish, if any
     //*************************************************************
 	if(shouldCreateThread(arg_left->n)) 
 		pthread_join(tid[0], NULL);
 	if(shouldCreateThread(arg_right->n))
 		pthread_join(tid[1], NULL);
 
-    while(l < mid && r < size-mid)
+    // Combine Results
+    //************************************************************
+    while(l < mid && r < size - mid)
     {
-        if(arg_left->array[l] < arg_right->array[r]){
+        if(arg_left->array[l] < arg_right->array[r])
+        {
             ((struct Arg*)arg_in)->temp[s] = arg_left->array[l];
             l++;
         }
-        else{
+        else
+        {
             ((struct Arg*)arg_in)->temp[s] = arg_right->array[r];
             r++;
         }
@@ -128,7 +134,7 @@ void* mergeSort(void* arg_in)
     for (i = l, j = s; i <= mid - 1 && j <= s + mid - l - 1; i++, j++)
 	    ((struct Arg*)arg_in)->temp[j] = arg_left->array[i];
         
-    s += (mid - l);
+    s += mid - l;
 
     for (i = r, j = s; i <= size - mid - 1 && j <= s + size - mid - 1 - r; i++, j++)
         ((struct Arg*)arg_in)->temp[j] = arg_right->array[i];
@@ -142,33 +148,33 @@ void* mergeSort(void* arg_in)
     return 0;
 }
 
-int* sortedArray(int n)
+long* sortedArray(long n)
 {
-    int* arr = (int*) malloc(sizeof(int) * n);
-    int i;
+    long* arr = (long*) malloc(sizeof(long) * n);
+    long i;
     for (i = 0; i < n; i++)
         arr[i] = i + 1;
     return arr;
 }
 
-void Swap(int* a, int* b)
+void Swap(long* a, long* b)
 {
-    int t = *a;
+    long t = *a;
     *a = *b;
     *b = t;
 }
 
-void genFile(int size)
+void genFile(long size)
 {
     FILE* fp = fopen("input.txt","w");
     fprintf(fp, "%d\n", size);
 
-    int* arr = sortedArray(size);
+    long* arr = sortedArray(size);
 
-    int i;
+    long i;
     for (i = size; i > 1; i--)
     {
-        int swap = rand() % i;
+        long swap = rand() % i;
         Swap(&arr[swap], &arr[i - 1]);
 
     }
@@ -205,26 +211,17 @@ int main()
     //*************************************************************
     sem_init(&mutex, 0, 1);
     shared->thread_count = 0;
-    genFile(100000);
+    genFile(INPUT_SIZE);
 
     FILE* fp;
 	fp = fopen("input.txt", "r");
-    int n;
+    long n;
     fscanf(fp, "%d", &n);
 
     struct Arg* input_struct = (struct Arg*) malloc(sizeof(struct Arg));
-    input_struct->array = (int*) malloc(sizeof(int) * n);
-	input_struct->temp = (int*) malloc(sizeof(int)* n);
+    input_struct->array = (long*) malloc(sizeof(long) * n);
+    input_struct->temp = (long*) malloc(sizeof(long)* n);
 	input_struct->n = n;
-    int i;
-
-    printf("\nInputs: ");
-    for(i = 0; i < n; ++i)
-    {
-        fscanf(fp, "%d", &(input_struct->array[i]));
-        printf("%d ",input_struct->array[i]);
-    }
-    printf("\n");
 
 	// Sort
 	//*************************************************************
@@ -233,6 +230,7 @@ int main()
     // Check Result
     //*************************************************************
     int sorted = 1;
+    long i;
     for (i = 0; i < n - 1; i++)
     {
         if (input_struct->array[i + 1]
@@ -244,23 +242,26 @@ int main()
     }
 
     if(sorted == 1)
-        printf("Success");
+        printf("Success\n");
     else
-        printf("Fail");
+        printf("Fail\n");
 
-    printf("\nOutputs: ");
-    for(i = 0; i < n; ++i)
-    {
-        fscanf(fp, "%d", &(input_struct->array[i]));
-        printf("%d ",input_struct->array[i]);
-    }
-    printf("\n");
+//    printf("\nOutputs: ");
+//    for(i = 0; i < n; ++i)
+//    {
+//        fscanf(fp, "%d", &(input_struct->array[i]));
+//        printf("%d ",input_struct->array[i]);
+//    }
+//    printf("\n");
 
 	//Clean Up
 	//*************************************************************
 	fclose(fp);				// Close file
-    free(input_struct->array);    // Free arrays
+
+    free(input_struct->array);    // Free things
     free(input_struct->temp);
+    free(input_struct);
+
 	sem_destroy(&mutex);			// De-Allocate Semaphore
 	
 	// De-Allocate Shared Memory
