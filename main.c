@@ -14,20 +14,20 @@
 #include <unistd.h>
 #include <semaphore.h>
 
-#define INPUT_SIZE 10000000  // The size of input to sort
-#define MAX_THREADS 2	// The maximum number of threads spawned
-#define MIN_SIZE 4	// The smallest subproblem which we will multithread
+#define INPUT_SIZE 10000000     // The size of input to sort
+#define MAX_THREADS 2	        // The maximum number of threads spawned
+#define MIN_SIZE 4	            // The smallest subproblem which we will multithread
 #define SHMKEY ((key_t) 9999)   // Shared Mem Key
 
 sem_t mutex;
 
 // Struct Used to pass the argument
-struct Arg
+typedef struct
 {
     unsigned long n;
     unsigned long* array;
     unsigned long* temp;
-};
+} Arg;
 
 // Struct used for shared memory
 typedef struct
@@ -62,25 +62,26 @@ int shouldCreateThread(unsigned long array_size)
 //MergeSort 
 void* mergeSort(void* arg_in)
 {
-    unsigned long size = ((struct Arg*)arg_in)->n;
+    unsigned long size = ((Arg*)arg_in)->n;
 
     // Base Case
-    if (size <= 1) return 0;
+    if (size <= 1) 
+        return 0;
 
     // Set Left and Right arguments
     //*************************************************************
     unsigned long l = 0, r = 0, s = 0, i = 0, j = 0;
     unsigned long mid = (size + 1) / 2;
 
-	struct Arg* arg_left = (struct Arg*) malloc(sizeof(struct Arg));
-	struct Arg* arg_right = (struct Arg*) malloc(sizeof(struct Arg));	
+	Arg* arg_left = (Arg*) malloc(sizeof(Arg));
+	Arg* arg_right = (Arg*) malloc(sizeof(Arg));	
  
 	arg_left->n = mid;
 	arg_right->n = size - mid;
-	arg_left->array = ((struct Arg*)arg_in)->array;
-	arg_right->array = ((struct Arg*)arg_in)->array + mid;
-	arg_left->temp = ((struct Arg*)arg_in)->temp;
-	arg_right->temp = ((struct Arg*)arg_in)->temp + mid;
+	arg_left->array = ((Arg*)arg_in)->array;
+	arg_right->array = ((Arg*)arg_in)->array + mid;
+	arg_left->temp = ((Arg*)arg_in)->temp;
+	arg_right->temp = ((Arg*)arg_in)->temp + mid;
 
     // Set Up Threads
     //*************************************************************
@@ -96,8 +97,9 @@ void* mergeSort(void* arg_in)
         pthread_create(&tid[0], &attr, mergeSort, arg_left);
         incrementThreadCount();
     }
-	else
-        mergeSort(arg_left);
+   	else
+        mergeSort(arg_left);        //Left Half
+
 	
     if(shouldCreateThread(arg_right->n))
     {
@@ -105,7 +107,8 @@ void* mergeSort(void* arg_in)
         incrementThreadCount();
     }
 	else	
-        mergeSort(arg_right);
+        mergeSort(arg_right);       //Right Half
+
 
     // Wait for threads to finish, if any
     //*************************************************************
@@ -114,33 +117,37 @@ void* mergeSort(void* arg_in)
 	if(shouldCreateThread(arg_right->n))
 		pthread_join(tid[1], NULL);
 
-    // Combine Results
+    // Combine Results 
     //************************************************************
     while(l < mid && r < size - mid)
     {
         if(arg_left->array[l] < arg_right->array[r])
         {
-            ((struct Arg*)arg_in)->temp[s] = arg_left->array[l];
+            ((Arg*)arg_in)->temp[s] = arg_left->array[l];
             l++;
         }
         else
         {
-            ((struct Arg*)arg_in)->temp[s] = arg_right->array[r];
+            ((Arg*)arg_in)->temp[s] = arg_right->array[r];
             r++;
         }
         s++;
     }
 
+    // Copy Remainders 
+    //************************************************************
     for (i = l, j = s; i <= mid - 1 && j <= s + mid - l - 1; i++, j++)
-	    ((struct Arg*)arg_in)->temp[j] = arg_left->array[i];
+	    ((Arg*)arg_in)->temp[j] = arg_left->array[i];
         
     s += mid - l;
 
     for (i = r, j = s; i <= size - mid - 1 && j <= s + size - mid - 1 - r; i++, j++)
-        ((struct Arg*)arg_in)->temp[j] = arg_right->array[i];
+        ((Arg*)arg_in)->temp[j] = arg_right->array[i];
 
+    // Copy back to Original array 
+    //************************************************************
     for (i = 0; i <= size - 1; i++)
-        ((struct Arg*)arg_in)->array[i] = ((struct Arg*)arg_in)->temp[i];
+        ((Arg*)arg_in)->array[i] = ((Arg*)arg_in)->temp[i];
 
 	free(arg_left);
 	free(arg_right);
@@ -174,13 +181,13 @@ void genFile(unsigned long size)
     unsigned long i;
     for (i = size; i > 1; i--)
     {
-        unsigned long swap = rand() % i;
-        Swap(&arr[swap], &arr[i - 1]);
+        unsigned long temp = rand() % i;
+        Swap(&arr[temp], &arr[i - 1]);
 
     }
 
     for (i = 0; i < size; i++)
-        fprintf(fp, "%lud ", arr[i]);
+        fprintf(fp, "%lu ", arr[i]);
 
     fprintf(fp, "\n \n");
     fclose(fp);
@@ -188,6 +195,7 @@ void genFile(unsigned long size)
 
 int main()
 {
+    unsigned long i;
     // Create and connect to a shared memory segment
     //*************************************************************
     int shmid;
@@ -218,10 +226,18 @@ int main()
     unsigned long n;
     fscanf(fp, "%lu", &n);
 
-    struct Arg* input_struct = (struct Arg*) malloc(sizeof(struct Arg));
+    Arg* input_struct = (Arg*) malloc(sizeof(Arg));
     input_struct->array = (unsigned long*) malloc(sizeof(unsigned long) * n);
     input_struct->temp = (unsigned long*) malloc(sizeof(unsigned long)* n);
 	input_struct->n = n;
+
+
+
+    for (i = 0; i < n; ++i)
+    {
+        fscanf(fp, "%d", &(input_struct->array[i]));
+    }
+
 
 	// Sort
 	//*************************************************************
@@ -230,7 +246,6 @@ int main()
     // Check Result
     //*************************************************************
     int sorted = 1;
-    unsigned long i;
     for (i = 0; i < n - 1; i++)
     {
         if (input_struct->array[i + 1]
@@ -241,6 +256,13 @@ int main()
         }
     }
 
+    // Check Result
+    //*************************************************************
+//    /*
+    for (i = 0; i < n; ++i)
+        printf("%lu ", input_struct->array[i]);
+//    */
+            
     if(sorted == 1)
         printf("Success\n");
     else
