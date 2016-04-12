@@ -19,9 +19,17 @@ typedef struct{
 } Arg;
 
 void* mergeSortThreaded(void* arg){
-    int i;
-    for(i = 0; i < )
-    printf("%d ")
+    //if size <=1 return
+
+    //int mid = size / 2
+
+    //create 2 new structs; left/right
+
+    //copy elements into left/right
+
+    //call mergeSortThreaded on left/right
+
+    //merge elements together
 }
 
 void mergeSort(){
@@ -30,44 +38,54 @@ void mergeSort(){
 
     Arg subarrays[numThreads];
 
-    //actually need to create an array to store the segments
-    //set pointer to this array
-    int tmp[numThreads][segmentSize];
+    int leftover = arraySize % numThreads;
+    int tmp[numThreads][segmentSize + leftover];
+    memset(tmp, -1, numThreads * (segmentSize + leftover) * sizeof(int));
+
     for(i = 0; i < numThreads; i++){
         for(j = 0; j < segmentSize; j++){
             tmp[i][j] = inpArr[(i * segmentSize) + j];
-            //printf("%d ", inpArr[(i * segmentSize) + j]);
-            //subarrays[i].array = inpArr[i * segmentSize];
-            //subarrays[i].array + j = inpArr[(i+1) * j];
         }
+
+        //handle extra elements
+        if(leftover > 0 && i == numThreads - 1){
+            subarrays[i].n = leftover + segmentSize;
+            for(j = segmentSize; j < leftover + segmentSize; j++){
+                tmp[i][j] = inpArr[(i * segmentSize) + j];
+            }
+        }
+        else
+            subarrays[i].n = segmentSize;
         subarrays[i].array = tmp[i];
-        //memset(tmp, 0, sizeof(tmp));
     }
 
     printf("\n");
     for(i = 0; i < numThreads; i++){
         printf("Segment %d: \n", i);
-        for(j = 0; j < segmentSize; j++){
+        for(j = 0; j < segmentSize + leftover; j++){
+            if(subarrays[i].array[j] == -1)
+                continue;
             printf("%d ", subarrays[i].array[j]);
         }
         printf("\n \n");
     }
 
-    //make threads here
+    //make threads
     pthread_t thread[numThreads];
-    //thread = malloc(sizeof(pthread_t)*numThreads);
 
     for(i = 0; i < numThreads; i++){
-      if(pthread_create (&thread[i], NULL, mergeSortThreaded, &subarrays[i]) != 0){
-        printf("Error to create threads \n");
-        exit(0);
-      }
+        if(pthread_create (&thread[i], NULL, mergeSortThreaded, &subarrays[i]) != 0){
+            printf("Error to create threads \n");
+            exit(0);
+        }
     }
 
     //wait for threads to finish
     for(i = 0; i < numThreads; i++){
-      pthread_join(thread[i],NULL);
+        pthread_join(thread[i],NULL);
     }
+
+    //merge back elements
 }
 
 int main(int argc, char *argv[]){
@@ -98,12 +116,10 @@ int main(int argc, char *argv[]){
         fscanf(fr, "%d", &inputArr[i]);
     }
 
+    fclose(fr);
+
     inpArr = inputArr;
     mergeSort();
-    //test array elements
-    //for(i = 0; i < arraySize; i++){
-    //    printf("%d ", inpArr[i]);
-    //}
 
     printf("\n");
     printf("numThreads: %d \n", numThreads);
