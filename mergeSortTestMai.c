@@ -18,18 +18,79 @@ typedef struct{
     int *array;
 } Arg;
 
-void* mergeSortThreaded(void* arg){
-    //if size <=1 return
+void* mergeSortThreaded(void* argInput){
 
-    //int mid = size / 2
+    int i, j;
+    Arg* argCast = (Arg *) argInput;
+    int size = argCast->n;
 
-    //create 2 new structs; left/right
+    if(size <= 1)
+        return;
+    else{
+        int mid = size/2 - 1;
 
-    //copy elements into left/right
+        Arg arg_left, arg_right;
+        int arrL [mid], arrR [size - mid];
 
-    //call mergeSortThreaded on left/right
+        arg_left.array = malloc(sizeof(int) * mid + 1);
+        arg_right.array = malloc(sizeof(int) * mid + 1);
 
-    //merge elements together
+        arg_left.array = arrL;
+        arg_right.array = arrR;
+
+        //set values in left/right subarrays
+        for(i = 0; i <= mid; i++){
+            arg_left.array[i] = argCast->array[i];
+        }
+        arg_left.n = mid;
+
+        for(i = mid + 1, j = 0; i < size; i++, j++){
+            arg_right.array[j] = argCast->array[i];
+        }
+        arg_right.n = mid + 1 + size%2;
+
+    /*  Debug purposes
+        printf("Threaded left: \n");
+        for(i = 0; i <= mid; i++){
+            printf(" %d ", arg_left.array[i]);
+        }
+
+        printf("\n Threaded right: \n");
+        for(i = 0; i < size - mid - 1; i++){
+            printf(" %d ", arg_right.array[i]);
+        }
+    */
+
+    //    mergeSortThreaded(&arg_left);
+    //    mergeSortThreaded(&arg_right);
+
+/*        int left, right, t = 0;
+
+        while(left < arg_left.n && right < arg_right.n){
+            //seg_fault here
+            if(arg_left.array[left] < arg_right.array[right])
+                argCast->array[t++] = arg_left.array[left++];
+            else
+                argCast->array[t++] = arg_right.array[right++];
+        }
+
+        while(left < arg_left.n){
+            argCast->array[t++] = arg_left.array[left++];
+        }
+
+        while(right < arg_right.n){
+            argCast->array[t++] = arg_right.array[right++];
+        }
+*/
+
+/*      Debug purposes
+        printf("Check if sorted results: \n");
+        for(i = 0; i < size; i++){
+            printf("%d ", argCast->array[i]);
+        }
+*/
+    }
+
 }
 
 void mergeSort(){
