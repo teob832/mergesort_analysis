@@ -14,8 +14,8 @@
 #include <unistd.h>
 #include <semaphore.h>
 
-#define INPUT_SIZE 10000000     // The size of input to sort
-#define MAX_THREADS 10	        // The maximum number of threads spawned
+#define INPUT_SIZE  10000000 // The size of input to sort
+#define MAX_THREADS 16 // The maximum number of threads spawned
 #define MIN_SIZE 4	            // The smallest subproblem which we will multithread
 #define SHMKEY ((key_t) 9999)   // Shared Mem Key
 
@@ -37,13 +37,6 @@ typedef struct
 shared_mem *shared;
 
 
-// Increases the shared thread count by 1
-void incrementThreadCount()
-{
-	sem_wait(&mutex);
-	++(shared->thread_count);
-	sem_post(&mutex);
-}
 
 // Returns true if a new thread should be created
 // based on MAX_THREADS and MIN_SIZE
@@ -51,11 +44,16 @@ int shouldCreateThread(unsigned long array_size)
 {
     sem_wait(&mutex);
     int num_threads = shared->thread_count;
-    sem_post(&mutex);
-
+    
     if(num_threads < MAX_THREADS
     && array_size >= MIN_SIZE)
+    {
+        ++(shared->thread_count);
+        sem_post(&mutex);
+        
         return 1;
+    }
+    sem_post(&mutex);
     return 0;
 }
 
@@ -94,9 +92,8 @@ void* mergeSort(void* arg_in)
     // Recursive Calls
     //*************************************************************
     if(shouldCreateThread(arg_left->n))
-    {
+   {
         pthread_create(&tid[0], &attr, mergeSort, arg_left);
-        incrementThreadCount();
         leftbool = 1;
     }
    	else
@@ -106,7 +103,6 @@ void* mergeSort(void* arg_in)
     if(shouldCreateThread(arg_right->n))
     {
         pthread_create(&tid[1], &attr, mergeSort, arg_right);
-        incrementThreadCount();
         rightbool = 1;
     }
 	else	
@@ -253,7 +249,7 @@ int main()
     for (i = 0; i < n - 1; i++)
     {
         if (input_struct->array[i + 1]
-            < input_struct->array[i])
+            <=  input_struct->array[i])
         {
 	    x = i;
 	    y = i+1;
@@ -264,7 +260,7 @@ int main()
 
     // Check Result
     //*************************************************************
-//    /*
+//  /*
     for (i = 0; i < n; ++i)
        printf("%lu ", input_struct->array[i]);
 //    */
