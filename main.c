@@ -15,7 +15,7 @@
 #include <semaphore.h>
 
 #define INPUT_SIZE 10000000     // The size of input to sort
-#define MAX_THREADS 2	        // The maximum number of threads spawned
+#define MAX_THREADS 10	        // The maximum number of threads spawned
 #define MIN_SIZE 4	            // The smallest subproblem which we will multithread
 #define SHMKEY ((key_t) 9999)   // Shared Mem Key
 
@@ -63,7 +63,8 @@ int shouldCreateThread(unsigned long array_size)
 void* mergeSort(void* arg_in)
 {
     unsigned long size = ((Arg*)arg_in)->n;
-
+    int leftbool = 0; 
+    int rightbool = 0;
     // Base Case
     if (size <= 1) 
         return 0;
@@ -96,6 +97,7 @@ void* mergeSort(void* arg_in)
     {
         pthread_create(&tid[0], &attr, mergeSort, arg_left);
         incrementThreadCount();
+        leftbool = 1;
     }
    	else
         mergeSort(arg_left);        //Left Half
@@ -105,6 +107,7 @@ void* mergeSort(void* arg_in)
     {
         pthread_create(&tid[1], &attr, mergeSort, arg_right);
         incrementThreadCount();
+        rightbool = 1;
     }
 	else	
         mergeSort(arg_right);       //Right Half
@@ -112,9 +115,9 @@ void* mergeSort(void* arg_in)
 
     // Wait for threads to finish, if any
     //*************************************************************
-	if(shouldCreateThread(arg_left->n)) 
+	if(leftbool) 
 		pthread_join(tid[0], NULL);
-	if(shouldCreateThread(arg_right->n))
+	if(rightbool)
 		pthread_join(tid[1], NULL);
 
     // Combine Results 
@@ -246,12 +249,15 @@ int main()
     // Check Result
     //*************************************************************
     int sorted = 1;
+    int x, y;
     for (i = 0; i < n - 1; i++)
     {
         if (input_struct->array[i + 1]
             < input_struct->array[i])
         {
-            sorted = 0;
+	    x = i;
+	    y = i+1;
+	    sorted = 0;
             break;
         }
     }
@@ -260,14 +266,16 @@ int main()
     //*************************************************************
 //    /*
     for (i = 0; i < n; ++i)
-        printf("%lu ", input_struct->array[i]);
+       printf("%lu ", input_struct->array[i]);
 //    */
             
     if(sorted == 1)
         printf("Success\n");
-    else
+    else{
         printf("Fail\n");
-
+	printf("i: %i i+1: %i\n", x, y);
+	printf("%i %i\n", input_struct->array[x], input_struct->array[y]);
+	}
 //    printf("\nOutputs: ");
 //    for(i = 0; i < n; ++i)
 //    {
@@ -295,3 +303,4 @@ int main()
 	
 	return 0;
 }
+
