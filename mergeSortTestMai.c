@@ -27,27 +27,27 @@ void* mergeSortThreaded(void* argInput){
     if(size <= 1)
         return;
     else{
-        int mid = size/2 - 1;
+        int mid = size/2;
 
         Arg arg_left, arg_right;
         int arrL [mid], arrR [size - mid];
 
-        arg_left.array = malloc(sizeof(int) * mid + 1);
-        arg_right.array = malloc(sizeof(int) * mid + 1);
+        arg_left.array = malloc(sizeof(int) * (mid ));
+        arg_right.array = malloc(sizeof(int) * (size - mid));
 
         arg_left.array = arrL;
         arg_right.array = arrR;
 
         //set values in left/right subarrays
-        for(i = 0; i <= mid; i++){
+        for(i = 0; i < mid; i++){
             arg_left.array[i] = argCast->array[i];
         }
         arg_left.n = mid;
 
-        for(i = mid + 1, j = 0; i < size; i++, j++){
+        for(i = mid, j = 0; i < size; i++, j++){
             arg_right.array[j] = argCast->array[i];
         }
-        arg_right.n = mid + 1 + size%2;
+        arg_right.n = size - mid;
 
     /*  Debug purposes
         printf("Threaded left: \n");
@@ -61,10 +61,10 @@ void* mergeSortThreaded(void* argInput){
         }
     */
 
-    //    mergeSortThreaded(&arg_left);
-    //    mergeSortThreaded(&arg_right);
+        mergeSortThreaded(&arg_left);
+        mergeSortThreaded(&arg_right);
 
-/*        int left, right, t = 0;
+        int left = 0; int right = 0;int t = 0;
 
         while(left < arg_left.n && right < arg_right.n){
             //seg_fault here
@@ -81,10 +81,10 @@ void* mergeSortThreaded(void* argInput){
         while(right < arg_right.n){
             argCast->array[t++] = arg_right.array[right++];
         }
-*/
 
-/*      Debug purposes
-        printf("Check if sorted results: \n");
+
+//      Debug purposes
+/*        printf("Check if sorted results: \n");
         for(i = 0; i < size; i++){
             printf("%d ", argCast->array[i]);
         }
