@@ -9,7 +9,7 @@
 #include <unistd.h>
 #include <semaphore.h>
 
-int numThreads;
+unsigned int numThreads;
 int arraySize;
 int *inpArr;
 
@@ -82,18 +82,12 @@ void* mergeSortThreaded(void* argInput){
             argCast->array[t++] = arg_right.array[right++];
         }
 
-
-//      Debug purposes
-/*        printf("Check if sorted results: \n");
-        for(i = 0; i < size; i++){
-            printf("%d ", argCast->array[i]);
-        }
-*/
     }
 
 }
 
 void mergeSort(){
+
     int i, j;
     int segmentSize = arraySize/numThreads;
 
@@ -146,12 +140,25 @@ void mergeSort(){
         pthread_join(thread[i],NULL);
     }
 
+/*  Debug Purposes
+    printf("\n");
+    for(i = 0; i < numThreads; i++){
+        printf("Sorted Segment %d: \n", i);
+        for(j = 0; j < segmentSize + leftover; j++){
+            if(subarrays[i].array[j] == -1)
+                continue;
+            printf("%d ", subarrays[i].array[j]);
+        }
+        printf("\n \n");
+    }
+*/
+
     //merge back elements
 }
 
 int main(int argc, char *argv[]){
     if(argc == 3){
-        numThreads = atoi(argv[1]);
+        numThreads = (unsigned) atoi(argv[1]);
         arraySize = atoi(argv[2]);
         if(numThreads > arraySize){
             printf("Error: numThreads cannot exceed arraySize\n");
@@ -181,6 +188,13 @@ int main(int argc, char *argv[]){
 
     inpArr = inputArr;
     mergeSort();
+
+/*  Debug Purposes
+    printf("\n Sorted Array: \n");
+    for(i = 0; i < arraySize; i++){
+        printf("%d ", &inpArr[i]);
+    }
+*/
 
     printf("\n");
     printf("numThreads: %d \n", numThreads);
