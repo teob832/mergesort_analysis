@@ -18,7 +18,7 @@
 
 unsigned long INPUT_SIZE; // The size of input to sort
 int MAX_THREADS;          // The maximum number of threads spawned
-int MIN_SIZE;             // The smallest subproblem which we will multithread
+unsigned long  MIN_SIZE;             // The smallest subproblem which we will multithread
 sem_t mutex;
 
 // Struct Used to pass the argument
@@ -32,28 +32,34 @@ typedef struct
 // Struct used for shared memory
 typedef struct
 {
-	int thread_count;
+    int thread_count;
+    int maxed_threads;
 } shared_mem;
 shared_mem *shared;
-
-
 
 // Returns true if a new thread should be created
 // based on MAX_THREADS and MIN_SIZE
 int shouldCreateThread(unsigned long array_size)
 {
-    sem_wait(&mutex);
-    int num_threads = shared->thread_count;
-    
-    if(num_threads < MAX_THREADS
-    && array_size >= MIN_SIZE)
+    if(!shared->maxed_threads)
     {
-        ++(shared->thread_count);
+        sem_wait(&mutex);
+        int num_threads = shared->thread_count;
+
+        if(num_threads < MAX_THREADS
+        && array_size >= MIN_SIZE)
+        {
+            ++(shared->thread_count);
+
+            if(shared->thread_count == MAX_THREADS)
+                shared->maxed_threads = 1;
+
+            sem_post(&mutex);
+            return 1;
+        }
         sem_post(&mutex);
-        
-        return 1;
+        return 0;
     }
-    sem_post(&mutex);
     return 0;
 }
 
@@ -250,6 +256,7 @@ int main(int argc, char* argv[])
     //*************************************************************
     sem_init(&mutex, 0, 1);
     shared->thread_count = 0;
+    shared->maxed_threads = 0;
 
     if (argc > 1)
         genFile(INPUT_SIZE);
@@ -266,7 +273,7 @@ int main(int argc, char* argv[])
 
     for (i = 0; i < n; ++i)
     {
-        fscanf(fp, "%d", &(input_struct->array[i]));
+        fscanf(fp, "%lu", &(input_struct->array[i]));
     }
 
 
@@ -300,7 +307,7 @@ int main(int argc, char* argv[])
     {
         printf("Fail\n");
         printf("i: %i i+1: %i\n", x, y);
-        printf("%i %i\n", input_struct->array[x], input_struct->array[y]);
+        printf("%lu %lu\n", input_struct->array[x], input_struct->array[y]);
 	}
 
 	//Clean Up
