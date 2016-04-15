@@ -16,7 +16,7 @@ unsigned int numThreads;
 int arraySize;
 int *inpArr;
 struct timeval start, end;
-long mtime, secs, usecs;
+long mtime, secs, usecs, finalv, tmps;
 
 typedef struct{
     int n;
@@ -77,9 +77,6 @@ void* mergeSortThreaded(void* argInput){
         arg_left.array = malloc(sizeof(int) * (mid));
         arg_right.array = malloc(sizeof(int) * (size - mid));
 
-        arg_left.array = arrL;
-        arg_right.array = arrR;
-
         //set values in left/right subarrays
         for(i = 0; i < mid; i++){
             arg_left.array[i] = argCast->array[i];
@@ -132,7 +129,6 @@ void mergeSortHelper(Arg a[]){
     int i;
     int segmentSize = arraySize/numThreads;
     int ptrArr[numThreads];
-    //int trackIndex[numThreads];
     int *trackIndex;
     trackIndex = malloc(sizeof(int) * numThreads);
     int finalArray[arraySize];
@@ -177,6 +173,15 @@ void mergeSortHelper(Arg a[]){
 
 void mergeSort(){
 
+    if(numThreads == 0){
+        Arg a;
+        a.array = inpArr;
+        a.n = arraySize;
+        mergeSortThreaded(&a);
+        return;
+    }
+
+    //break initial array into numThreads subarrays
     int i, j;
     int segmentSize = arraySize/numThreads;
 
@@ -216,6 +221,8 @@ void mergeSort(){
     } */
 
     //make threads
+    gettimeofday(&start, NULL);
+
     pthread_t thread[numThreads];
 
     for(i = 0; i < numThreads; i++){
@@ -230,6 +237,13 @@ void mergeSort(){
         pthread_join(thread[i],NULL);
     }
 
+    gettimeofday(&end, NULL);
+    secs  = end.tv_sec  - start.tv_sec;
+    usecs = end.tv_usec - start.tv_usec;
+    mtime = ((secs) * 1000 + usecs/1000.0) + 0.5;
+    tmps = mtime;
+    printf("Time to sort subarrays in threads: %ld ms\n", mtime);
+    
     //  Debug Purposes
 /*    printf("\n");
     for(i = 0; i < numThreads; i++){
@@ -278,22 +292,21 @@ int main(int argc, char *argv[]){
     secs  = end.tv_sec  - start.tv_sec;
     usecs = end.tv_usec - start.tv_usec;
     mtime = ((secs) * 1000 + usecs/1000.0) + 0.5;
+    finalv = mtime - tmps;
 
     int sorted = 1;
     for(i = 0; i < arraySize-1; i++){
         if(inpArr[i] > inpArr[i+1]){
-            printf("Error at %d: %d %d", i, inpArr[i], inpArr[i+1]);
             sorted = 0;
             break;
         }
     }
 
-    if(sorted == 1)
-        printf("Successful sort in %ld ms \n", mtime);
+    if(sorted == 1){
+        printf("Time for k-way merge of subarrays: %ld ms \n", finalv);
+        printf("Total time: %d ms \n", finalv + tmps);
+        printf("Succeeded in sorting %d elements with %d threads \n", arraySize, numThreads);
+    }
     else
         printf("Failure to Sort\n");
-    printf("numThreads: %d \n", numThreads);
-    printf("arraySize: %d \n", arraySize);
-
-
 }
