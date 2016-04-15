@@ -8,15 +8,57 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <semaphore.h>
+#include <math.h>
+#include <time.h>
+#include <sys/time.h>
 
 unsigned int numThreads;
 int arraySize;
 int *inpArr;
+struct timeval start, end;
+long mtime, secs, usecs;
 
 typedef struct{
     int n;
     int *array;
 } Arg;
+
+int* sortedArray(int n)
+{
+    int* arr = (int*) malloc(sizeof(int) * n);
+    int i;
+    for (i = 0; i < n; i++)
+        arr[i] = i + 1;
+    return arr;
+}
+
+void Swap(int* a, int* b)
+{
+    int t = *a;
+    *a = *b;
+    *b = t;
+}
+
+void genFile(int size)
+{
+    FILE* fp = fopen("input.txt","w");
+
+    int* arr = sortedArray(size);
+
+    int i;
+    for (i = size; i > 1; i--)
+    {
+        int temp = rand() % i;
+        Swap(&arr[temp], &arr[i - 1]);
+
+    }
+
+    for (i = 0; i < size; i++)
+        fprintf(fp, "%lu ", arr[i]);
+
+    fprintf(fp, "\n \n");
+    fclose(fp);
+}
 
 void* mergeSortThreaded(void* argInput){
 
@@ -32,7 +74,7 @@ void* mergeSortThreaded(void* argInput){
         Arg arg_left, arg_right;
         int arrL [mid], arrR [size - mid];
 
-        arg_left.array = malloc(sizeof(int) * (mid ));
+        arg_left.array = malloc(sizeof(int) * (mid));
         arg_right.array = malloc(sizeof(int) * (size - mid));
 
         arg_left.array = arrL;
@@ -67,7 +109,6 @@ void* mergeSortThreaded(void* argInput){
         int left = 0; int right = 0;int t = 0;
 
         while(left < arg_left.n && right < arg_right.n){
-            //seg_fault here
             if(arg_left.array[left] < arg_right.array[right])
                 argCast->array[t++] = arg_left.array[left++];
             else
@@ -84,6 +125,54 @@ void* mergeSortThreaded(void* argInput){
 
     }
 
+}
+
+void mergeSortHelper(Arg a[]){
+
+    int i;
+    int segmentSize = arraySize/numThreads;
+    int ptrArr[numThreads];
+    //int trackIndex[numThreads];
+    int *trackIndex;
+    trackIndex = malloc(sizeof(int) * numThreads);
+    int finalArray[arraySize];
+    memset(trackIndex, 0, numThreads);
+
+    //set ptr to first element of each sorted array
+    for(i = 0; i < numThreads; i++){
+        ptrArr[i] = a[i].array[0];
+    }
+
+
+    int counter = 0;
+    while(counter < arraySize){
+        int min = 999999999;
+        int tmp;
+
+        for(i = 0; i < numThreads; i++){
+            //at end of current subarray; go to next
+            if(trackIndex[i] == segmentSize || ptrArr[i] == -1)
+                continue;
+            if(ptrArr[i] < min){
+                min = ptrArr[i];
+                tmp = i;
+            }
+        }
+
+        //increment index position
+        trackIndex[tmp] += 1;
+
+        //set new value to pointer
+        ptrArr[tmp] = a[tmp].array[trackIndex[tmp]];
+
+        //add min value to array
+        finalArray[counter] = min;
+
+        counter++;
+    }
+
+    //set ptr location to finalArray
+    inpArr = finalArray;
 }
 
 void mergeSort(){
@@ -114,6 +203,7 @@ void mergeSort(){
         subarrays[i].array = tmp[i];
     }
 
+/*  Debug Purposes
     printf("\n");
     for(i = 0; i < numThreads; i++){
         printf("Segment %d: \n", i);
@@ -123,7 +213,7 @@ void mergeSort(){
             printf("%d ", subarrays[i].array[j]);
         }
         printf("\n \n");
-    }
+    } */
 
     //make threads
     pthread_t thread[numThreads];
@@ -140,8 +230,8 @@ void mergeSort(){
         pthread_join(thread[i],NULL);
     }
 
-/*  Debug Purposes
-    printf("\n");
+    //  Debug Purposes
+/*    printf("\n");
     for(i = 0; i < numThreads; i++){
         printf("Sorted Segment %d: \n", i);
         for(j = 0; j < segmentSize + leftover; j++){
@@ -150,10 +240,9 @@ void mergeSort(){
             printf("%d ", subarrays[i].array[j]);
         }
         printf("\n \n");
-    }
-*/
+    }*/
 
-    //merge back elements
+    mergeSortHelper(subarrays);
 }
 
 int main(int argc, char *argv[]){
@@ -171,13 +260,8 @@ int main(int argc, char *argv[]){
     }
 
     int i, inputArr[arraySize];
-    srand(time(NULL));
-    FILE *fp = fopen("input.txt", "w");
-    for(i = 0; i < arraySize; i++){
-        fprintf(fp, "%d ", rand() % 100);
-    }
 
-    fclose(fp);
+    genFile(arraySize);
 
     FILE *fr = fopen("input.txt", "r");
     for(i = 0; i < arraySize; i++){
@@ -187,16 +271,27 @@ int main(int argc, char *argv[]){
     fclose(fr);
 
     inpArr = inputArr;
+
+    gettimeofday(&start, NULL);
     mergeSort();
+    gettimeofday(&end, NULL);
+    secs  = end.tv_sec  - start.tv_sec;
+    usecs = end.tv_usec - start.tv_usec;
+    mtime = ((secs) * 1000 + usecs/1000.0) + 0.5;
 
-/*  Debug Purposes
-    printf("\n Sorted Array: \n");
-    for(i = 0; i < arraySize; i++){
-        printf("%d ", &inpArr[i]);
+    int sorted = 1;
+    for(i = 0; i < arraySize-1; i++){
+        if(inpArr[i] > inpArr[i+1]){
+            printf("Error at %d: %d %d", i, inpArr[i], inpArr[i+1]);
+            sorted = 0;
+            break;
+        }
     }
-*/
 
-    printf("\n");
+    if(sorted == 1)
+        printf("Successful sort in %ld ms \n", mtime);
+    else
+        printf("Failure to Sort\n");
     printf("numThreads: %d \n", numThreads);
     printf("arraySize: %d \n", arraySize);
 
