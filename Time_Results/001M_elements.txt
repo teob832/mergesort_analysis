@@ -1,0 +1,46 @@
+
+Time for mergeSort: 732 ms 
+Succeeded in sorting 1,000,000 elements with 0 threads 
+ 
+
+Time to sort subarrays in threads: 425 ms
+Time for k-way merge of subarrays: 44 ms 
+Total time: 469 ms 
+Succeeded in sorting 1,000,000 elements with 2 threads 
+ 
+
+Time to sort subarrays in threads: 281 ms
+Time for k-way merge of subarrays: 54 ms 
+Total time: 335 ms 
+Succeeded in sorting 1,000,000 elements with 3 threads 
+ 
+
+Time to sort subarrays in threads: 210 ms
+Time for k-way merge of subarrays: 65 ms 
+Total time: 275 ms 
+Succeeded in sorting 1,000,000 elements with 4 threads 
+ 
+
+Time to sort subarrays in threads: 169 ms
+Time for k-way merge of subarrays: 74 ms 
+Total time: 243 ms 
+Succeeded in sorting 1,000,000 elements with 5 threads 
+ 
+
+Time to sort subarrays in threads: 143 ms
+Time for k-way merge of subarrays: 92 ms 
+Total time: 235 ms 
+Succeeded in sorting 1,000,000 elements with 6 threads 
+ 
+
+Time to sort subarrays in threads: 124 ms
+Time for k-way merge of subarrays: 106 ms 
+Total time: 230 ms 
+Succeeded in sorting 1,000,000 elements with 7 threads 
+ 
+
+Time to sort subarrays in threads: 106 ms
+Time for k-way merge of subarrays: 116 ms 
+Total time: 222 ms 
+Succeeded in sorting 1,000,000 elements with 8 threads 
+ 
