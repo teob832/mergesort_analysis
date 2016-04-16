@@ -1,16 +1,11 @@
 #include <pthread.h>
 #include <stdio.h>
-#include <sys/types.h>
-#include <sys/ipc.h>
-#include <sys/shm.h>
-#include <sys/wait.h>
 #include <fcntl.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include <semaphore.h>
-#include <math.h>
 #include <time.h>
 #include <sys/time.h>
+#include <locale.h>
 
 unsigned int numThreads;
 int arraySize;
@@ -75,7 +70,6 @@ void* mergeSortThreaded(void* argInput){
         arg_left = malloc(sizeof(Arg));
         arg_right = malloc(sizeof(Arg));
 
-        //segmentation faults here
         arg_left->array = (int *)malloc(mid * sizeof(int));
         arg_right->array = (int *)malloc(sizeof(int) * (size - mid));
 
@@ -90,21 +84,10 @@ void* mergeSortThreaded(void* argInput){
         }
         arg_right->n = size - mid;
 
-    /*  Debug purposes
-        printf("Threaded left: \n");
-        for(i = 0; i <= mid; i++){
-            printf(" %d ", arg_left.array[i]);
-        }
-
-        printf("\n Threaded right: \n");
-        for(i = 0; i < size - mid - 1; i++){
-            printf(" %d ", arg_right.array[i]);
-        }
-    */
-
         mergeSortThreaded(arg_left);
         mergeSortThreaded(arg_right);
 
+        //mergesort
         int left = 0; int right = 0;int t = 0;
 
         while(left < arg_left->n && right < arg_right->n){
@@ -138,7 +121,10 @@ void mergeSortHelper(Arg a[]){
     int *trackIndex;
     trackIndex = malloc(sizeof(int) * numThreads);
     int finalArray[arraySize];
-    memset(trackIndex, 0, numThreads);
+
+    for(i = 0; i < numThreads; i++){
+        trackIndex[i] = 0;
+    }
 
     //set ptr to first element of each sorted array
     for(i = 0; i < numThreads; i++){
@@ -162,7 +148,7 @@ void mergeSortHelper(Arg a[]){
         }
 
         //increment index position
-        trackIndex[tmp] += 1;
+        trackIndex[tmp] = trackIndex[tmp] + 1;
 
         //set new value to pointer
         ptrArr[tmp] = a[tmp].array[trackIndex[tmp]];
@@ -180,6 +166,7 @@ void mergeSortHelper(Arg a[]){
 
 void mergeSort(){
 
+    //regular mergeSort without any threads
     if(numThreads == 0){
         Arg a;
         a.array = inpArr;
@@ -215,18 +202,6 @@ void mergeSort(){
         subarrays[i].array = tmp[i];
     }
 
-/*  Debug Purposes
-    printf("\n");
-    for(i = 0; i < numThreads; i++){
-        printf("Segment %d: \n", i);
-        for(j = 0; j < segmentSize + leftover; j++){
-            if(subarrays[i].array[j] == -1)
-                continue;
-            printf("%d ", subarrays[i].array[j]);
-        }
-        printf("\n \n");
-    } */
-
     //make threads
     gettimeofday(&start, NULL);
 
@@ -251,18 +226,7 @@ void mergeSort(){
     tmps = mtime;
     printf("\nTime to sort subarrays in threads: %ld ms\n", mtime);
 
-    //  Debug Purposes
-/*    printf("\n");
-    for(i = 0; i < numThreads; i++){
-        printf("Sorted Segment %d: \n", i);
-        for(j = 0; j < segmentSize + leftover; j++){
-            if(subarrays[i].array[j] == -1)
-                continue;
-            printf("%d ", subarrays[i].array[j]);
-        }
-        printf("\n \n");
-    }*/
-
+    //do k-way merging of sorted subarrays
     mergeSortHelper(subarrays);
 }
 
@@ -272,10 +236,6 @@ int main(int argc, char *argv[]){
         arraySize = atoi(argv[2]);
         if(numThreads > arraySize){
             printf("Error: numThreads cannot exceed arraySize\n");
-            return;
-        }
-        if(numThreads == 1 || numThreads > 8){
-            printf("Error: Number of threads can only be between 2 and 8 \n");
             return;
         }
     }
@@ -288,6 +248,7 @@ int main(int argc, char *argv[]){
 
     genFile(arraySize);
 
+    //read file into input array
     FILE *fr = fopen("input.txt", "r");
     for(i = 0; i < arraySize; i++){
         fscanf(fr, "%d", &inputArr[i]);
@@ -305,6 +266,7 @@ int main(int argc, char *argv[]){
     mtime = ((secs) * 1000 + usecs/1000.0) + 0.5;
     finalv = mtime - tmps;
 
+    //check if array is sorted
     int sorted = 1;
     for(i = 0; i < arraySize-1; i++){
         if(inpArr[i] > inpArr[i+1]){
@@ -313,16 +275,17 @@ int main(int argc, char *argv[]){
         }
     }
 
+    setlocale(LC_NUMERIC, "");
     if(numThreads == 0)
         printf("\n");
     if(sorted == 1){
         if(numThreads == 0)
-            printf("Time for mergeSort: %ld ms", mtime);
+            printf("Time for mergeSort: %ld ms \n", mtime);
         else{
             printf("Time for k-way merge of subarrays: %ld ms \n", finalv);
             printf("Total time: %d ms \n", finalv + tmps);
         }
-        printf("Succeeded in sorting %d elements with %d threads \n \n", arraySize, numThreads);
+        printf("Succeeded in sorting %'d elements with %d threads \n \n", arraySize, numThreads);
     }
     else
         printf("Failure to Sort\n");
