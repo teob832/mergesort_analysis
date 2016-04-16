@@ -71,22 +71,24 @@ void* mergeSortThreaded(void* argInput){
     else{
         int mid = size/2;
 
-        Arg arg_left, arg_right;
-        int arrL [mid], arrR [size - mid];
+        Arg* arg_left; Arg* arg_right;
+        arg_left = malloc(sizeof(Arg));
+        arg_right = malloc(sizeof(Arg));
 
-        arg_left.array = malloc(sizeof(int) * (mid));
-        arg_right.array = malloc(sizeof(int) * (size - mid));
+        //segmentation faults here
+        arg_left->array = (int *)malloc(mid * sizeof(int));
+        arg_right->array = (int *)malloc(sizeof(int) * (size - mid));
 
         //set values in left/right subarrays
         for(i = 0; i < mid; i++){
-            arg_left.array[i] = argCast->array[i];
+            arg_left->array[i] = argCast->array[i];
         }
-        arg_left.n = mid;
+        arg_left->n = mid;
 
         for(i = mid, j = 0; i < size; i++, j++){
-            arg_right.array[j] = argCast->array[i];
+            arg_right->array[j] = argCast->array[i];
         }
-        arg_right.n = size - mid;
+        arg_right->n = size - mid;
 
     /*  Debug purposes
         printf("Threaded left: \n");
@@ -100,26 +102,30 @@ void* mergeSortThreaded(void* argInput){
         }
     */
 
-        mergeSortThreaded(&arg_left);
-        mergeSortThreaded(&arg_right);
+        mergeSortThreaded(arg_left);
+        mergeSortThreaded(arg_right);
 
         int left = 0; int right = 0;int t = 0;
 
-        while(left < arg_left.n && right < arg_right.n){
-            if(arg_left.array[left] < arg_right.array[right])
-                argCast->array[t++] = arg_left.array[left++];
+        while(left < arg_left->n && right < arg_right->n){
+            if(arg_left->array[left] < arg_right->array[right])
+                argCast->array[t++] = arg_left->array[left++];
             else
-                argCast->array[t++] = arg_right.array[right++];
+                argCast->array[t++] = arg_right->array[right++];
         }
 
-        while(left < arg_left.n){
-            argCast->array[t++] = arg_left.array[left++];
+        while(left < arg_left->n){
+            argCast->array[t++] = arg_left->array[left++];
         }
 
-        while(right < arg_right.n){
-            argCast->array[t++] = arg_right.array[right++];
+        while(right < arg_right->n){
+            argCast->array[t++] = arg_right->array[right++];
         }
 
+        free(arg_left->array);
+        free(arg_right->array);
+        free(arg_left);
+        free(arg_right);
     }
 
 }
@@ -142,7 +148,7 @@ void mergeSortHelper(Arg a[]){
 
     int counter = 0;
     while(counter < arraySize){
-        int min = 999999999;
+        int min = 9999999999;
         int tmp;
 
         for(i = 0; i < numThreads; i++){
@@ -168,6 +174,7 @@ void mergeSortHelper(Arg a[]){
     }
 
     //set ptr location to finalArray
+    free(trackIndex);
     inpArr = finalArray;
 }
 
@@ -242,8 +249,8 @@ void mergeSort(){
     usecs = end.tv_usec - start.tv_usec;
     mtime = ((secs) * 1000 + usecs/1000.0) + 0.5;
     tmps = mtime;
-    printf("Time to sort subarrays in threads: %ld ms\n", mtime);
-    
+    printf("\nTime to sort subarrays in threads: %ld ms\n", mtime);
+
     //  Debug Purposes
 /*    printf("\n");
     for(i = 0; i < numThreads; i++){
@@ -265,6 +272,10 @@ int main(int argc, char *argv[]){
         arraySize = atoi(argv[2]);
         if(numThreads > arraySize){
             printf("Error: numThreads cannot exceed arraySize\n");
+            return;
+        }
+        if(numThreads == 1 || numThreads > 8){
+            printf("Error: Number of threads can only be between 2 and 8 \n");
             return;
         }
     }
@@ -302,10 +313,16 @@ int main(int argc, char *argv[]){
         }
     }
 
+    if(numThreads == 0)
+        printf("\n");
     if(sorted == 1){
-        printf("Time for k-way merge of subarrays: %ld ms \n", finalv);
-        printf("Total time: %d ms \n", finalv + tmps);
-        printf("Succeeded in sorting %d elements with %d threads \n", arraySize, numThreads);
+        if(numThreads == 0)
+            printf("Time for mergeSort: %ld ms", mtime);
+        else{
+            printf("Time for k-way merge of subarrays: %ld ms \n", finalv);
+            printf("Total time: %d ms \n", finalv + tmps);
+        }
+        printf("Succeeded in sorting %d elements with %d threads \n \n", arraySize, numThreads);
     }
     else
         printf("Failure to Sort\n");
