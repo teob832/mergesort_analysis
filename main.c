@@ -13,6 +13,8 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <semaphore.h>
+#include <sys/time.h>
+#include <time.h>
 
 #define SHMKEY ((key_t) 9999)   // Shared Mem Key
 
@@ -20,6 +22,8 @@ unsigned long INPUT_SIZE; // The size of input to sort
 int MAX_THREADS;          // The maximum number of threads spawned
 unsigned long  MIN_SIZE;             // The smallest subproblem which we will multithread
 sem_t mutex;
+struct timeval start, end;
+long mtime, secs, usecs, finalv, tmps;
 
 // Struct Used to pass the argument
 typedef struct
@@ -63,15 +67,15 @@ int shouldCreateThread(unsigned long array_size)
     return 0;
 }
 
-//MergeSort 
+//MergeSort
 void* mergeSort(void* arg_in)
 {
 
     unsigned long size = ((Arg*)arg_in)->n;
-    int leftbool = 0; 
+    int leftbool = 0;
     int rightbool = 0;
     // Base Case
-    if (size <= 1) 
+    if (size <= 1)
         return 0;
 
     // Set Left and Right arguments
@@ -80,8 +84,8 @@ void* mergeSort(void* arg_in)
     unsigned long mid = (size + 1) / 2;
 
 	Arg* arg_left = (Arg*) malloc(sizeof(Arg));
-	Arg* arg_right = (Arg*) malloc(sizeof(Arg));	
- 
+	Arg* arg_right = (Arg*) malloc(sizeof(Arg));
+
 	arg_left->n = mid;
 	arg_right->n = size - mid;
 	arg_left->array = ((Arg*)arg_in)->array;
@@ -106,24 +110,24 @@ void* mergeSort(void* arg_in)
    	else
         mergeSort(arg_left);        //Left Half
 
-	
+
     if(shouldCreateThread(arg_right->n))
     {
         pthread_create(&tid[1], &attr, mergeSort, arg_right);
         rightbool = 1;
     }
-	else	
+	else
         mergeSort(arg_right);       //Right Half
 
 
     // Wait for threads to finish, if any
     //*************************************************************
-	if(leftbool) 
+	if(leftbool)
 		pthread_join(tid[0], NULL);
 	if(rightbool)
 		pthread_join(tid[1], NULL);
 
-    // Combine Results 
+    // Combine Results
     //************************************************************
     while(l < mid && r < size - mid)
     {
@@ -140,17 +144,17 @@ void* mergeSort(void* arg_in)
         s++;
     }
 
-    // Copy Remainders 
+    // Copy Remainders
     //************************************************************
     for (i = l, j = s; i <= mid - 1 && j <= s + mid - l - 1; i++, j++)
 	    ((Arg*)arg_in)->temp[j] = arg_left->array[i];
-        
+
     s += mid - l;
 
     for (i = r, j = s; i <= size - mid - 1 && j <= s + size - mid - 1 - r; i++, j++)
         ((Arg*)arg_in)->temp[j] = arg_right->array[i];
 
-    // Copy back to Original array 
+    // Copy back to Original array
     //************************************************************
     for (i = 0; i <= size - 1; i++)
         ((Arg*)arg_in)->array[i] = ((Arg*)arg_in)->temp[i];
@@ -206,7 +210,7 @@ int main(int argc, char* argv[])
 {
 
     FILE* fp;
-    unsigned long n;    
+    unsigned long n;
     unsigned int i;
     int newInput = 0;   //Flag to generate new input file
     int sorted = 1;
@@ -229,7 +233,7 @@ int main(int argc, char* argv[])
     else
     {
         INPUT_SIZE = 1000000;   // The size of input to sort
-        MAX_THREADS = 2;        // The maximum number of threads spawned
+        MAX_THREADS = 10;        // The maximum number of threads spawned
         MIN_SIZE = 100;        // The smallest subproblem which we will multithread
     }
 
@@ -250,7 +254,7 @@ int main(int argc, char* argv[])
 		perror("shmat");
 		exit(0);
 	}
-	
+
     // Read file and initialize semaphore, shared memory, and
     // input struct
     //*************************************************************
@@ -279,8 +283,13 @@ int main(int argc, char* argv[])
 
 	// Sort
 	//*************************************************************
+    gettimeofday(&start, NULL);
     mergeSort(input_struct);
-
+    gettimeofday(&end, NULL);
+    secs  = end.tv_sec  - start.tv_sec;
+    usecs = end.tv_usec - start.tv_usec;
+    mtime = ((secs) * 1000 + usecs/1000.0) + 0.5;
+	printf("\nTime to sort: %d  ms\n", mtime);
     // Check Result
     //*************************************************************
     for (i = 0; i < n - 1; i++)
@@ -295,12 +304,12 @@ int main(int argc, char* argv[])
         }
     }
 
-    //Debugger: Print 
+    //Debugger: Print
 //  /*
-    for (i = 0; i < n; ++i)
-       printf("%lu ", input_struct->array[i]);
+   // for (i = 0; i < n; ++i)
+     //  printf("%lu ", input_struct->array[i]);
 //    */
-            
+
     if(sorted == 1)
         printf("Success\n");
     else
@@ -319,14 +328,13 @@ int main(int argc, char* argv[])
     free(input_struct);
 
 	sem_destroy(&mutex);			// De-Allocate Semaphore
-	
+
 	// De-Allocate Shared Memory
 	if ((shmctl(shmid, IPC_RMID, (struct shmid_ds *) 0)) == -1)
 	{
 		perror("shmctl");
 		exit(-1);
-	}    
-	
+	}
+
 	return 0;
 }
-
