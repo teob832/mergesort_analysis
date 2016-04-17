@@ -289,7 +289,8 @@ int main(int argc, char* argv[])
     secs  = end.tv_sec  - start.tv_sec;
     usecs = end.tv_usec - start.tv_usec;
     mtime = ((secs) * 1000 + usecs/1000.0) + 0.5;
-	printf("\nTime to sort: %d  ms\n", mtime);
+	printf("%d \t %d \t %d \t %dms\n",  INPUT_SIZE, 
+	        MAX_THREADS, MIN_SIZE, mtime);
     // Check Result
     //*************************************************************
     for (i = 0; i < n - 1; i++)
@@ -310,11 +311,9 @@ int main(int argc, char* argv[])
      //  printf("%lu ", input_struct->array[i]);
 //    */
 
-    if(sorted == 1)
-        printf("Success\n");
-    else
+    if (sorted == 0)
     {
-        printf("Fail\n");
+        printf("*************************************\nFail\n********************************************\n");
         printf("i: %i i+1: %i\n", x, y);
         printf("%lu %lu\n", input_struct->array[x], input_struct->array[y]);
 	}
