@@ -289,8 +289,9 @@ int main(int argc, char* argv[])
     secs  = end.tv_sec  - start.tv_sec;
     usecs = end.tv_usec - start.tv_usec;
     mtime = ((secs) * 1000 + usecs/1000.0) + 0.5;
-	printf("%d \t %d \t %d \t %dms\n",  INPUT_SIZE, 
-	        MAX_THREADS, MIN_SIZE, mtime);
+	//printf("%d \t %d \t %d \t %dms\n",  INPUT_SIZE, 
+	//        MAX_THREADS, MIN_SIZE, mtime);
+	printf("%d,",  mtime); 
     // Check Result
     //*************************************************************
     for (i = 0; i < n - 1; i++)
