@@ -1,9 +1,10 @@
 #!/bin/bash
 
-for i in {0..32}
+for j in {1..25}
 do
-    ./run.sh 10000000 $i 0 >> output.txt;
-    sleep 1;
+    for i in {0..8} 
+    do
+        ./run.sh 10000000 $i 1000000 >> 10mil.out;
+    done
+    echo "" >> output.txt;
 done
-
-
