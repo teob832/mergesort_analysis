@@ -22,8 +22,7 @@ unsigned long INPUT_SIZE; // The size of input to sort
 int MAX_THREADS;          // The maximum number of threads spawned
 unsigned long  MIN_SIZE;             // The smallest subproblem which we will multithread
 sem_t mutex;
-struct timeval start, end;
-long mtime, secs, usecs, finalv, tmps;
+
 
 // Struct Used to pass the argument
 typedef struct
@@ -45,6 +44,8 @@ shared_mem *shared;
 // based on MAX_THREADS and MIN_SIZE
 int shouldCreateThread(unsigned long array_size)
 {
+    int return_val = 0;
+
     if(!shared->maxed_threads)
     {
         sem_wait(&mutex);
@@ -54,23 +55,21 @@ int shouldCreateThread(unsigned long array_size)
         && array_size >= MIN_SIZE)
         {
             ++(shared->thread_count);
-
-            if(shared->thread_count == MAX_THREADS)
-                shared->maxed_threads = 1;
-
-            sem_post(&mutex);
-            return 1;
+            return_val = 1;
         }
+
+        if(shared->thread_count == MAX_THREADS
+        || array_size < MIN_SIZE)
+            shared->maxed_threads = 1;
+
         sem_post(&mutex);
-        return 0;
     }
-    return 0;
+    return return_val;
 }
 
 //MergeSort
 void* mergeSort(void* arg_in)
 {
-
     unsigned long size = ((Arg*)arg_in)->n;
     int leftbool = 0;
     int rightbool = 0;
@@ -203,12 +202,8 @@ void genFile(unsigned long size)
     fclose(fp);
 }
 
-
-
-
 int main(int argc, char* argv[])
 {
-
     FILE* fp;
     unsigned long n;
     unsigned int i;
@@ -273,25 +268,27 @@ int main(int argc, char* argv[])
     input_struct->temp = (unsigned long*) malloc(sizeof(unsigned long)* n);
 	input_struct->n = n;
 
-
-
     for (i = 0; i < n; ++i)
     {
         fscanf(fp, "%lu", &(input_struct->array[i]));
     }
 
-
-	// Sort
+    // Sort and time
 	//*************************************************************
+    struct timeval start, end;
+    long msecs, secs, usecs;
+
     gettimeofday(&start, NULL);
+
     mergeSort(input_struct);
+
     gettimeofday(&end, NULL);
     secs  = end.tv_sec  - start.tv_sec;
     usecs = end.tv_usec - start.tv_usec;
-    mtime = ((secs) * 1000 + usecs/1000.0) + 0.5;
-	//printf("%d \t %d \t %d \t %dms\n",  INPUT_SIZE, 
-	//        MAX_THREADS, MIN_SIZE, mtime);
-	printf("%d,",  mtime); 
+    msecs = (secs * 1000 + usecs/1000.0);
+
+    printf("%lu", msecs);
+
     // Check Result
     //*************************************************************
     for (i = 0; i < n - 1; i++)
@@ -306,13 +303,7 @@ int main(int argc, char* argv[])
         }
     }
 
-    //Debugger: Print
-//  /*
-   // for (i = 0; i < n; ++i)
-     //  printf("%lu ", input_struct->array[i]);
-//    */
-
-    if (sorted == 0)
+    if (!sorted)
     {
         printf("*************************************\nFail\n********************************************\n");
         printf("i: %i i+1: %i\n", x, y);

@@ -1,10 +1,13 @@
 #!/bin/bash
 
-for j in {1..25}
+for thread in {0..31} 
 do
-    for i in {0..8} 
-    do
-        ./run.sh 10000000 $i 1000000 >> 10mil.out;
-    done
-    echo "" >> output.txt;
-done
+	for run in {0..15}
+	do
+		./run.sh 100000 $thread 0 >> result.csv;
+		printf "," >> result.csv;
+	done
+	echo "" >> result.csv;
+done	
+
+
