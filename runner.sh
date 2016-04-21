@@ -1,10 +1,12 @@
 #!/bin/bash
 
-for thread in {0..31} 
+gcc main.c -lpthread -lrt -g -o main.out; 
+
+for thread in {0..16} 
 do
 	for run in {0..15}
 	do
-		./run.sh 100000 $thread 0 >> result.csv;
+		./main.out 100000 $thread 0 1 >> result.csv;
 		printf "," >> result.csv;
 	done
 	echo "" >> result.csv;

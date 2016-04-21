@@ -19,10 +19,10 @@
 #define SHMKEY ((key_t) 9999)   // Shared Mem Key
 
 unsigned long INPUT_SIZE; // The size of input to sort
+unsigned long  MIN_SIZE;  // The smallest subproblem which we will multithread
 int MAX_THREADS;          // The maximum number of threads spawned
-unsigned long  MIN_SIZE;             // The smallest subproblem which we will multithread
-sem_t mutex;
 
+sem_t mutex;    // Used to protect thread count
 
 // Struct Used to pass the argument
 typedef struct
@@ -35,7 +35,12 @@ typedef struct
 // Struct used for shared memory
 typedef struct
 {
+    // Protected thread count
     int thread_count;
+
+    // Unprotected boolean flag reduces
+    // mutex contention after maximum
+    // number of threads is reached
     int maxed_threads;
 } shared_mem;
 shared_mem *shared;
@@ -46,11 +51,14 @@ int shouldCreateThread(unsigned long array_size)
 {
     int return_val = 0;
 
+    // If we haven't made the maximum number of threads
     if(!shared->maxed_threads)
     {
+        // Acquire thread count
         sem_wait(&mutex);
         int num_threads = shared->thread_count;
 
+        // Assign a new thread if permissible
         if(num_threads < MAX_THREADS
         && array_size >= MIN_SIZE)
         {
@@ -58,10 +66,14 @@ int shouldCreateThread(unsigned long array_size)
             return_val = 1;
         }
 
+        // Set unprotected flag to indicate
+        // maximum number of threads have been created
+        // to reduce mutex contention
         if(shared->thread_count == MAX_THREADS
         || array_size < MIN_SIZE)
             shared->maxed_threads = 1;
 
+        // Release thread count
         sem_post(&mutex);
     }
     return return_val;
@@ -73,6 +85,7 @@ void* mergeSort(void* arg_in)
     unsigned long size = ((Arg*)arg_in)->n;
     int leftbool = 0;
     int rightbool = 0;
+
     // Base Case
     if (size <= 1)
         return 0;
@@ -102,7 +115,7 @@ void* mergeSort(void* arg_in)
     // Recursive Calls
     //*************************************************************
     if(shouldCreateThread(arg_left->n))
-   {
+    {
         pthread_create(&tid[0], &attr, mergeSort, arg_left);
         leftbool = 1;
     }
@@ -164,6 +177,8 @@ void* mergeSort(void* arg_in)
     return 0;
 }
 
+// Returns a pointer to a newly created
+// array sorted in ascending order
 unsigned long* sortedArray(unsigned long n)
 {
     unsigned long* arr = (unsigned long*) malloc(sizeof(unsigned long) * n);
@@ -173,6 +188,7 @@ unsigned long* sortedArray(unsigned long n)
     return arr;
 }
 
+// Swaps the data of two pointers
 void Swap(unsigned long* a, unsigned long* b)
 {
     unsigned long t = *a;
@@ -180,6 +196,8 @@ void Swap(unsigned long* a, unsigned long* b)
     *b = t;
 }
 
+// Creates a file containing integer values
+// from 1 to size in unsorted order
 void genFile(unsigned long size)
 {
     FILE* fp = fopen("input.txt","w");
@@ -204,35 +222,34 @@ void genFile(unsigned long size)
 
 int main(int argc, char* argv[])
 {
-    FILE* fp;
-    unsigned long n;
-    unsigned int i;
-    int newInput = 0;   //Flag to generate new input file
-    int sorted = 1;
-    int x, y;
 
-    //Specify specs with commandline args
+    unsigned int i; // Used in simple for loops
+    int new_input = 0;   //Flag to generate new input file
+
+    //Specify parameters with commandline args
     //*************************************************************
     if (argc >= 4)
     {
         INPUT_SIZE  = (unsigned long) atol(argv[1]);// The size of input to sort
         MAX_THREADS = atoi(argv[2]);                // The maximum number of threads spawned
-        MIN_SIZE    = atoi(argv[3]);                // The smallest subproblem which we will multithread
+        MIN_SIZE    = (unsigned long)atoi(argv[3]);                // The smallest subproblem which we will multithread
 
         //Check if new file should be generated
         if (argc == 5)
-            newInput = 1;
+            new_input = atoi(argv[4]);
 
     }
-    //Default, if command line arguments not specified/complete
+    // Default, if command line arguments not specified/complete
     else
     {
         INPUT_SIZE = 1000000;   // The size of input to sort
-        MAX_THREADS = 10;        // The maximum number of threads spawned
-        MIN_SIZE = 100;        // The smallest subproblem which we will multithread
+        MAX_THREADS = 12;       // The maximum number of threads spawned
+        MIN_SIZE = 0;           // The smallest subproblem which we will multithread
+        printf("Invalid/Incomplete parameters. Using Defaults.\n");
+        printf("Input Size: %lu, Max Threads: %d, Min Size: %lu.\n", INPUT_SIZE, MAX_THREADS,MIN_SIZE);
     }
 
-    // Create and connect to a shared memory segment
+    // Create, connect and initialize a shared memory segment
     //*************************************************************
     int shmid;
     char *shmadd;
@@ -250,28 +267,31 @@ int main(int argc, char* argv[])
 		exit(0);
 	}
 
-    // Read file and initialize semaphore, shared memory, and
-    // input struct
-    //*************************************************************
-    sem_init(&mutex, 0, 1);
     shared->thread_count = 0;
     shared->maxed_threads = 0;
 
-    if (argc > 1)
+    // Initialize semaphore
+    //*************************************************************
+    sem_init(&mutex, 0, 1);
+
+    // Generate new input file with unsorted integers
+    //*************************************************************
+    if (new_input)
         genFile(INPUT_SIZE);
 
-	fp = fopen("input.txt", "r");
-    fscanf(fp, "%lu", &n);
+    // Read data from input file
+    //*************************************************************
+    FILE* in_fp = fopen("input.txt", "r");
+    unsigned long input_size;
+    fscanf(in_fp, "%lu", &input_size);
 
     Arg* input_struct = (Arg*) malloc(sizeof(Arg));
-    input_struct->array = (unsigned long*) malloc(sizeof(unsigned long) * n);
-    input_struct->temp = (unsigned long*) malloc(sizeof(unsigned long)* n);
-	input_struct->n = n;
+    input_struct->array = (unsigned long*) malloc(sizeof(unsigned long) * input_size);
+    input_struct->temp = (unsigned long*) malloc(sizeof(unsigned long)* input_size);
+    input_struct->n = input_size;
 
-    for (i = 0; i < n; ++i)
-    {
-        fscanf(fp, "%lu", &(input_struct->array[i]));
-    }
+    for (i = 0; i < input_size; ++i)
+        fscanf(in_fp, "%lu", &(input_struct->array[i]));
 
     // Sort and time
 	//*************************************************************
@@ -289,19 +309,25 @@ int main(int argc, char* argv[])
 
     printf("%lu", msecs);
 
-    // Check Result
+    // Check Results and output to file
     //*************************************************************
-    for (i = 0; i < n - 1; i++)
+    int x, y;
+    int sorted = 1;     // Indicates if result is sorted
+    FILE* out_fp = fopen("output.txt","w");
+
+    for (i = 0; i < input_size - 1; i++)
     {
-        if (input_struct->array[i + 1]
-            <=  input_struct->array[i])
+        if (input_struct->array[i + 1] <  input_struct->array[i])
         {
             x = i;
             y = i+1;
             sorted = 0;
-                break;
+            break;
         }
+
+        fprintf(out_fp, "%lu ", input_struct->array[i]);
     }
+    fprintf(out_fp, "%lu", input_struct->array[input_size - 1]);
 
     if (!sorted)
     {
@@ -312,7 +338,8 @@ int main(int argc, char* argv[])
 
 	//Clean Up
 	//*************************************************************
-	fclose(fp);				// Close file
+    fclose(in_fp);				// Close files
+    fclose(out_fp);				// Close files
 
     free(input_struct->array);    // Free things
     free(input_struct->temp);
